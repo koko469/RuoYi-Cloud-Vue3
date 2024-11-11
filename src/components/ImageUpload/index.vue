@@ -39,7 +39,7 @@
     >
       <img
         :src="dialogImageUrl"
-        style="display: block; max-width: 100%; margin: 0 auto"
+        style="display: block; max-width: 100%; margin: 0 auto; "
       />
     </el-dialog>
   </div>
@@ -53,12 +53,12 @@ const props = defineProps({
   // 图片数量限制
   limit: {
     type: Number,
-    default: 5,
+    default: 1,
   },
   // 大小限制(MB)
   fileSize: {
     type: Number,
-    default: 5,
+    default: 10,
   },
   // 文件类型, 例如['png', 'jpg', 'jpeg']
   fileType: {
@@ -68,7 +68,11 @@ const props = defineProps({
   // 是否显示提示
   isShowTip: {
     type: Boolean,
-    default: true
+    default: false
+  },
+  maxSize: {
+    type: Object,
+    default: () => ({ width: 200, height: 200 }),
   },
 });
 
@@ -207,5 +211,16 @@ function listToString(list, separator) {
 // .el-upload--picture-card 控制加号部分
 :deep(.hide .el-upload--picture-card) {
     display: none;
+}
+// 限制图片大小
+:deep(.el-upload-list__item) {
+  width: v-bind("props.maxSize.width + 'px'");
+  height: v-bind("props.maxSize.height + 'px'");
+}
+
+// 限制上传按钮大小
+:deep(.el-upload--picture-card) {
+  width: v-bind("props.maxSize.width + 'px'");
+  height: v-bind("props.maxSize.height + 'px'");
 }
 </style>
