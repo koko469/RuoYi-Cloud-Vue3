@@ -42,26 +42,36 @@
       :data="labelList"
       row-key="id"
       :default-expand-all="isExpandAll"
-      :tree-props="{children: 'children', hasChildren: 'hasChildren'}"
+      :tree-props="{children: 'hildren', hasChildren: 'hasChildren'}"
+      @selection-change="handleSelectionChange"
+      @row-drop="handleRowDrop"
+      class="labeTable"
     >
+      <el-table-column type="selection" width="55" align="center" />
       <el-table-column label="分类名称" prop="name" />
-      <el-table-column label="上级id" align="center" prop="parentId" />
-      <el-table-column label="级数" align="center" prop="level" />
+<!--      <el-table-column label="级数" align="center" prop="level" />-->
       <el-table-column label="图片地址" align="center" prop="imageUrl" width="100">
         <template #default="scope">
           <image-preview :src="scope.row.imageUrl" :width="50" :height="50"/>
         </template>
       </el-table-column>
       <el-table-column label="分类备注" align="center" prop="remark" />
-      <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
+      <el-table-column label="排序" align="center" prop="sort" />
+      <el-table-column label="操作"  align="center" >
         <template #default="scope">
-          <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['shop:label:edit']">修改</el-button>
-          <el-button link type="primary" icon="Plus" @click="handleAdd(scope.row)" v-hasPermi="['shop:label:add']">新增</el-button>
-          <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['shop:label:remove']">删除</el-button>
+          <el-button size="small"  plain type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['shop:label:edit']">修改</el-button>
+          <el-button  size="small" plain type="info" icon="Plus" @click="handleAdd(scope.row)" v-hasPermi="['shop:label:add']">新增</el-button>
+          <el-button size="small" plain type="danger" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['shop:label:remove']">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
-
+    <pagination
+        v-show="total>0"
+        :total="total"
+        v-model:page="queryParams.pageNum"
+        v-model:limit="queryParams.pageSize"
+        @pagination="getList"
+    />
     <!-- 添加或修改分类对话框 -->
     <el-dialog :title="title" v-model="open" width="500px" append-to-body>
       <el-form ref="labelRef" :model="form" :rules="rules" label-width="80px">
@@ -84,6 +94,9 @@
         <el-form-item label="分类备注" prop="remark">
           <el-input v-model="form.remark" type="textarea" placeholder="请输入内容" />
         </el-form-item>
+        <el-form-item label="排序" prop="sort">
+          <el-input v-model="form.sort" type="number" placeholder="请输入内容" />
+        </el-form-item>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
@@ -97,9 +110,8 @@
 
 <script setup name="Label">
 import { listLabel, getLabel, delLabel, addLabel, updateLabel } from "@/api/shop/label";
-
+import Sortable from 'sortablejs'
 const { proxy } = getCurrentInstance();
-
 const labelList = ref([]);
 const labelOptions = ref([]);
 const open = ref(false);
@@ -108,7 +120,7 @@ const showSearch = ref(true);
 const title = ref("");
 const isExpandAll = ref(true);
 const refreshTable = ref(true);
-
+const total = ref(0);
 const data = reactive({
   form: {},
   queryParams: {
@@ -125,22 +137,28 @@ const data = reactive({
 });
 
 const { queryParams, form, rules } = toRefs(data);
-
 /** 查询分类列表 */
+// function getList() {
+//   loading.value = true;
+//   listLabel(queryParams.value).then(response => {
+//     labelList.value = proxy.handleTree(response.rows, "id", "parentId");
+//     loading.value = false;
+//   });
+// }
 function getList() {
   loading.value = true;
   listLabel(queryParams.value).then(response => {
-    labelList.value = proxy.handleTree(response.data, "id", "parentId");
+    labelList.value = proxy.handleTree(response.rows, "id", "parentId");
+    total.value = response.total;
     loading.value = false;
   });
 }
-
 /** 查询分类下拉树结构 */
 function getTreeselect() {
   listLabel().then(response => {
     labelOptions.value = [];
     const data = { id: 0, name: '顶级节点', children: [] };
-    data.children = proxy.handleTree(response.data, "id", "parentId");
+    data.children = proxy.handleTree(response.rows, "id", "parentId");
     labelOptions.value.push(data);
   });
 }
@@ -164,7 +182,8 @@ function reset() {
     ids: null,
     idsUrl: null,
     idsType: null,
-    delFlag: null
+    delFlag: null,
+    hildren: []
   };
   proxy.resetForm("labelRef");
 }
@@ -184,6 +203,7 @@ function resetQuery() {
 function handleAdd(row) {
   reset();
   getTreeselect();
+  console.log(row)
   if (row != null && row.id) {
     form.value.parentId = row.id;
   } else {
@@ -249,3 +269,8 @@ function handleDelete(row) {
 
 getList();
 </script>
+<style>
+.labeTable{
+  user-select: none;
+}
+</style>

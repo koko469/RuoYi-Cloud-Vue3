@@ -69,18 +69,20 @@
       <el-table-column type="selection" width="55" align="center" />
 <!--      <el-table-column label="Id" width="160" align="center" prop="id" />-->
       <el-table-column label="商品编号" align="center" prop="goodsNo" />
+
+      <el-table-column label="商品名称" align="center" prop="name" width="300"/>
+<!--      <el-table-column label="商品摘要" align="center" prop="remark" />-->
+<!--      <el-table-column label="商品主图" align="center" prop="image" width="100">-->
+<!--        <template #default="scope">-->
+<!--          <image-preview :src="scope.row.image" :width="50" :height="50"/>-->
+<!--        </template>-->
+<!--      </el-table-column>-->
       <el-table-column label="商品类型" align="center" prop="type" >
         <template v-slot="scope">
           {{scope.row.type==0?"普通商品":"其他商品" }}
         </template>
       </el-table-column>
-      <el-table-column label="商品名称" align="center" prop="name" />
-<!--      <el-table-column label="商品摘要" align="center" prop="remark" />-->
-      <el-table-column label="商品主图" align="center" prop="image" width="100">
-        <template #default="scope">
-          <image-preview :src="scope.row.image" :width="50" :height="50"/>
-        </template>
-      </el-table-column>
+      <el-table-column label="类别" align="center" prop="labelName" />
       <el-table-column label="是否推荐" align="center" prop="recommendFlag" >
         <template v-slot="scope">
           {{scope.row.recommendFlag==0?"否":"是" }}
@@ -108,8 +110,8 @@
       </el-table-column>
       <el-table-column label="操作" align="center"  width="200" >
         <template #default="scope">
-          <el-button link type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['shop:goods:edit']">修改</el-button>
-          <el-button link type="primary" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['shop:goods:remove']">删除</el-button>
+          <el-button size="small" plain type="primary" icon="Edit" @click="handleUpdate(scope.row)" v-hasPermi="['shop:goods:edit']">修改</el-button>
+          <el-button size="small" plain type="danger" icon="Delete" @click="handleDelete(scope.row)" v-hasPermi="['shop:goods:remove']">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -191,7 +193,7 @@
                        inactive-value="0"/>
           </el-form-item>
         </el-row>
-        <el-table :data="tableData" class="table-layout" max-height="250">
+        <el-table :data="tableData" class="specTable table-layout" max-height="250"  @row-drop="handleRowDrop">
 <!--          <el-table-column prop="id" label="ID" width="auto" />-->
           <el-table-column prop="name" label="规格" width="150">
             <template #default="scope">
@@ -250,7 +252,7 @@
         </el-button>
       </el-form>
       <div>
-        <el-table :data="attributeCombinations" class="table-layout" max-height="500">
+        <el-table :data="attributeCombinations" class="table-layout" max-height="500" >
           <!--          <el-table-column prop="id" label="ID" width="auto" />-->
 <!--          <el-table-column prop="ids" label="ids"  width="150" />-->
           <el-table-column prop="attributeNames" label="属性组合" width="150" />
@@ -333,6 +335,8 @@ import { listGoods, getGoods, delGoods, addGoods, updateGoods } from "@/api/shop
 import { listFreight } from "@/api/shop/freight";
 import { listLabelByAddGoods } from "@/api/shop/label";
 const { proxy } = getCurrentInstance();
+import { onMounted, nextTick } from 'vue';
+import Sortable from 'sortablejs'
 
 const goodsList = ref([]);
 const open = ref(false);
@@ -440,17 +444,8 @@ function getList() {
     loading.value = false;
   });
 }
-const handleStateChange = (value) =>{
-  value = value ? 1 : 0;
-}
 const generateCombinations = () => {
-  console.log("table")
-  console.log(tableData.value)
-  console.log(attributeCombinations.value)
   if (tableData.value.length === 0){
-    console.log("table")
-    console.log(tableData.value)
-    console.log(attributeCombinations.value)
     attributeCombinations.value = []
     return
   }
@@ -547,19 +542,36 @@ function reset() {
     goodsNo: null,
     type: null,
     name: null,
-    content: null,
+    content: " ",
     deliveryInstructions: null,
     image: null,
-    recommendFlag: null,
-    newFlag: null,
-    hotFlag: null,
-    promotionFlag: null,
-    state: null,
+    recommendFlag: 0,
+    newFlag: 0,
+    hotFlag: 0,
+    promotionFlag: 0,
+    state: 1,
   };
+  tableData.value = [];
+  attributeCombinations.value=[];
+  console.log(form.value)
   proxy.resetForm("goodsRef");
 }
 
+//移动行交换
+const handleRowDrop = (event) => {
+  const { oldIndex, newIndex } = event;
+  const [movedRow] = tableData.value.splice(oldIndex, 1);
+  tableData.value.splice(newIndex, 0, movedRow);
 
+  // 深拷贝数据并重新赋值
+  const newTableData = tableData.value.slice();
+  tableData.value = [];
+  nextTick(() => {
+    tableData.value = newTableData;
+    console.log(tableData.value)
+  });
+
+};
 //删除规格
 const deleteRow = (index) => {
   tableData.value.splice(index, 1)
@@ -603,20 +615,6 @@ function handleAdd() {
     label.value = res.data;
   })
 }
-function findPathById(options, id) {
-  for (const option of options) {
-    if (option.id === id) {
-      return [option.id];
-    }
-    if (option.children) {
-      const path = findPathById(option.children, id);
-      if (path) {
-        return [option.id, ...path];
-      }
-    }
-  }
-  return null;
-}
 /** 修改按钮操作 */
 function handleUpdate(row) {
   reset();
@@ -624,7 +622,6 @@ function handleUpdate(row) {
   let labelId = null;
   let freightId = null;
   getGoods(_id).then(response => {
-    console.log(response)
     form.value = response.data.goods;
     labelId = response.data.goods.labelId;
     freightId = response.data.goods.freightId;
@@ -632,6 +629,7 @@ function handleUpdate(row) {
     attributeCombinations.value = response.data.goodsSpecAttributePrice;
     open.value = true;
     title.value = "修改商品";
+    console.log(attributeCombinations.value)
   });
   listFreight().then(response => {
     freight.value = response.rows
@@ -639,6 +637,18 @@ function handleUpdate(row) {
   listLabelByAddGoods().then(res => {
     label.value = res.data;
   })
+  setTimeout(() => {
+    const specTable = document.querySelector('.specTable .el-table__body-wrapper tbody');
+    console.log(specTable);
+    if (specTable) {
+      Sortable.create(specTable, {
+        animation: 150,
+        onEnd: handleRowDrop,
+      });
+    } else {
+      console.error('Element with class "specTable table-layout" not found');
+    }
+  }, 1000);
 }
 
 /** 提交按钮 */
@@ -646,8 +656,15 @@ function submitForm() {
   proxy.$refs["goodsRef"].validate(valid => {
     if (valid) {
       if (form.value.id != null) {
-        updateGoods(form.value).then(response => {
+        const map = {
+          goods: form.value,
+          goodsSpecs: tableData.value,
+          goodsSpecAttributePrice: attributeCombinations.value,
+        }
+        console.log(map)
+        updateGoods(map).then(response => {
           proxy.$modal.msgSuccess("修改成功");
+
           open.value = false;
           getList();
         });
@@ -657,7 +674,6 @@ function submitForm() {
           goodsSpecs: tableData.value,
           goodsSpecAttributePrice: attributeCombinations.value,
         }
-        console.log(map)
         addGoods(map).then(response => {
           proxy.$modal.msgSuccess("新增成功");
           open.value = false;
