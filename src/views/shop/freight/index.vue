@@ -9,38 +9,6 @@
           @keyup.enter="handleQuery"
         />
       </el-form-item>
-      <el-form-item label="首个单位 首件数/首重量" prop="firstUnit">
-        <el-input
-          v-model="queryParams.firstUnit"
-          placeholder="请输入首个单位 首件数/首重量"
-          clearable
-          @keyup.enter="handleQuery"
-        />
-      </el-form-item>
-      <el-form-item label="首个单位金额" prop="firstMoney">
-        <el-input
-          v-model="queryParams.firstMoney"
-          placeholder="请输入首个单位金额"
-          clearable
-          @keyup.enter="handleQuery"
-        />
-      </el-form-item>
-      <el-form-item label="需单位  续件数/续重量" prop="continuityUnit">
-        <el-input
-          v-model="queryParams.continuityUnit"
-          placeholder="请输入需单位  续件数/续重量"
-          clearable
-          @keyup.enter="handleQuery"
-        />
-      </el-form-item>
-      <el-form-item label="续单位金额" prop="continuityMoney">
-        <el-input
-          v-model="queryParams.continuityMoney"
-          placeholder="请输入续单位金额"
-          clearable
-          @keyup.enter="handleQuery"
-        />
-      </el-form-item>
       <el-form-item>
         <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
         <el-button icon="Refresh" @click="resetQuery">重置</el-button>
@@ -91,9 +59,13 @@
 
     <el-table v-loading="loading" :data="freightList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
-      <el-table-column label="运费模板id" align="center" prop="id" />
+<!--      <el-table-column label="运费模板id" align="center" prop="id" />-->
       <el-table-column label="模板名称" align="center" prop="name" />
-      <el-table-column label="类型 0包邮 1按件数 2按重量 " align="center" prop="type" />
+      <el-table-column label="类型" align="center" prop="type" >
+        <template v-slot="scope">
+          {{scope.row.type==0?"包邮":scope.row.type==1?"按件数":scope.row.type==2?"按重量":"其他" }}
+        </template>
+      </el-table-column>
       <el-table-column label="首个单位 首件数/首重量" align="center" prop="firstUnit" />
       <el-table-column label="首个单位金额" align="center" prop="firstMoney" />
       <el-table-column label="需单位  续件数/续重量" align="center" prop="continuityUnit" />
@@ -115,10 +87,30 @@
     />
 
     <!-- 添加或修改运费模板对话框 -->
-    <el-dialog :title="title" v-model="open" width="500px" append-to-body>
-      <el-form ref="freightRef" :model="form" :rules="rules" label-width="80px">
+    <el-dialog :title="title" v-model="open" width="50%" append-to-body>
+      <el-form ref="freightRef" :model="form" :rules="rules" label-width="150px">
         <el-form-item label="模板名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入模板名称" />
+        </el-form-item>
+        <el-form-item label="类型" prop="name">
+          <el-cascader
+              v-model="form.type"
+              :options="options"
+              :props="customProps"
+              @change="handleChange"
+          />
+        </el-form-item>
+        <el-form-item label="首件数/首重量" prop="firstUnit">
+          <el-input v-model="form.firstUnit" placeholder="请输入首个单位 首件数/首重量" />
+        </el-form-item>
+        <el-form-item label="首单位金额" prop="firstMoney">
+          <el-input v-model="form.firstMoney" placeholder="请输入首个单位金额" />
+        </el-form-item>
+        <el-form-item label="续件数/续重量" prop="continuityUnit">
+          <el-input v-model="form.continuityUnit" placeholder="请输入需单位  续件数/续重量" />
+        </el-form-item>
+        <el-form-item label="续单位金额" prop="continuityMoney">
+          <el-input v-model="form.continuityMoney" placeholder="请输入续单位金额" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -152,11 +144,6 @@ const data = reactive({
     pageNum: 1,
     pageSize: 10,
     name: null,
-    type: null,
-    firstUnit: null,
-    firstMoney: null,
-    continuityUnit: null,
-    continuityMoney: null,
   },
   rules: {
     name: [
@@ -179,7 +166,24 @@ const data = reactive({
     ],
   }
 });
-
+const options = [
+    {
+      value: '0',
+      label: '包邮'
+    },
+    {
+      value: '1',
+      label: '按件数'
+    },
+    {
+      value: '2',
+      label: '按重量'
+    }
+]
+const customProps = ref({
+  emitPath: false, // 只返回该节点的值
+  expandTrigger: "hover", // 次级菜单的展开方式 - click/hover
+})
 const { queryParams, form, rules } = toRefs(data);
 
 /** 查询运费模板列表 */
@@ -262,6 +266,7 @@ function submitForm() {
           getList();
         });
       } else {
+        console.log(form.value)
         addFreight(form.value).then(response => {
           proxy.$modal.msgSuccess("新增成功");
           open.value = false;

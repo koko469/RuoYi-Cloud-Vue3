@@ -67,6 +67,12 @@ export const constantRoutes = [
         component: () => import('@/views/index'),
         name: 'Index',
         meta: { title: '首页', icon: 'dashboard', affix: true }
+      },
+      {
+        path: '/couponRelation/:scope/:id',
+        component: () => import('@/views/shop/coupon/relation/index'),
+        name: 'couponRelation',
+        meta: { title: '优惠券详情', icon: 'dashboard', affix: false }
       }
     ]
   },
